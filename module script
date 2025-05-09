@@ -1,1 +1,234 @@
+local MobileKavoUI = {}
 
+MobileKavoUI.__index = MobileKavoUI
+
+function MobileKavoUI:ToggleUI()
+    if self.MainFrame then
+        self.MainFrame.Visible = not self.MainFrame.Visible
+    end
+end
+
+function MobileKavoUI.CreateLib(titleText, theme)
+    local self = setmetatable({}, MobileKavoUI)
+
+    -- ScreenGui
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "MobileKavoUI"
+    gui.ResetOnSpawn = false
+    gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+    -- Main Frame
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 450, 0, 320)
+    frame.Position = UDim2.new(0.5, -225, 0.5, -160)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.BorderSizePixel = 0
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Active = true
+    frame.Draggable = false
+    frame.Parent = gui
+    self.MainFrame = frame
+
+    -- Dragging
+    local dragging, dragInput, dragStart, startPos
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if dragging and dragInput then
+            local delta = dragInput.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    -- Title
+    local title = Instance.new("TextLabel")
+    title.Text = titleText or "Mobile UI"
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Font = Enum.Font.GothamSemibold
+    title.TextSize = 20
+    title.Parent = frame
+
+    -- Tabs system
+    self.Tabs = {}
+
+    function self:NewTab(name)
+        local tab = {}
+        tab.Sections = {}
+
+        tab.Frame = Instance.new("ScrollingFrame")
+        tab.Frame.Size = UDim2.new(1, 0, 1, -40)
+        tab.Frame.Position = UDim2.new(0, 0, 0, 40)
+        tab.Frame.CanvasSize = UDim2.new(0, 0, 0, 0)
+        tab.Frame.BackgroundTransparency = 1
+        tab.Frame.BorderSizePixel = 0
+        tab.Frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        tab.Frame.ScrollBarThickness = 6
+        tab.Frame.Parent = self.MainFrame
+
+        function tab:NewSection(title)
+            local section = Instance.new("Frame")
+            section.Size = UDim2.new(1, -10, 0, 30)
+            section.AutomaticSize = Enum.AutomaticSize.Y
+            section.Position = UDim2.new(0, 5, 0, 0)
+            section.BackgroundTransparency = 1
+            section.BorderSizePixel = 0
+            section.LayoutOrder = #tab.Sections + 1
+            section.Parent = tab.Frame
+
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, 0, 0, 30)
+            label.Text = title
+            label.Font = Enum.Font.GothamBold
+            label.TextSize = 18
+            label.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            label.TextColor3 = Color3.fromRGB(255, 255, 255)
+            label.Parent = section
+
+            table.insert(tab.Sections, section)
+            return section
+        end
+
+        table.insert(self.Tabs, tab)
+        return tab
+    end
+
+    function self:NewSlider(parent, name, min, max, default, callback)
+        local slider = Instance.new("TextButton")
+        slider.Size = UDim2.new(1, -10, 0, 40)
+        slider.Position = UDim2.new(0, 5, 0, 0)
+        slider.Text = name .. ": " .. tostring(default)
+        slider.Font = Enum.Font.Gotham
+        slider.TextSize = 18
+        slider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        slider.TextColor3 = Color3.fromRGB(255, 255, 255)
+        slider.Parent = parent
+        slider.MouseButton1Click:Connect(function()
+            local value = default
+            slider.Text = name .. ": " .. value
+            callback(value)
+        end)
+    end
+
+    function self:NewLabel(parent, text)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -10, 0, 30)
+        label.Position = UDim2.new(0, 5, 0, 0)
+        label.Text = text
+        label.Font = Enum.Font.Gotham
+        label.TextSize = 18
+        label.BackgroundTransparency = 1
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.Parent = parent
+    end
+
+    function self:NewButton(parent, name, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, 40)
+        btn.Position = UDim2.new(0, 5, 0, 0)
+        btn.Text = name
+        btn.Font = Enum.Font.Gotham
+        btn.TextSize = 18
+        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.Parent = parent
+        btn.MouseButton1Click:Connect(callback)
+    end
+
+    function self:NewDropdown(parent, name, list, callback)
+        local dropdown = Instance.new("TextButton")
+        dropdown.Size = UDim2.new(1, -10, 0, 40)
+        dropdown.Position = UDim2.new(0, 5, 0, 0)
+        dropdown.Text = name
+        dropdown.Font = Enum.Font.Gotham
+        dropdown.TextSize = 18
+        dropdown.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        dropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
+        dropdown.Parent = parent
+        dropdown.MouseButton1Click:Connect(function()
+            local choice = list[1]
+            dropdown.Text = name .. ": " .. choice
+            callback(choice)
+        end)
+    end
+
+    function self:NewKeybind(keycode, callback)
+        game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
+            if not gpe and input.KeyCode == keycode then
+                callback()
+            end
+        end)
+    end
+
+    function self:NewToggle(parent, name, default, callback)
+        local state = default
+        local toggle = Instance.new("TextButton")
+        toggle.Size = UDim2.new(1, -10, 0, 40)
+        toggle.Position = UDim2.new(0, 5, 0, 0)
+        toggle.Text = name .. ": " .. (state and "ON" or "OFF")
+        toggle.Font = Enum.Font.Gotham
+        toggle.TextSize = 18
+        toggle.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        toggle.Parent = parent
+        toggle.MouseButton1Click:Connect(function()
+            state = not state
+            toggle.Text = name .. ": " .. (state and "ON" or "OFF")
+            callback(state)
+        end)
+    end
+
+    function self:NewTextbox(parent, placeholder, callback)
+        local textbox = Instance.new("TextBox")
+        textbox.Size = UDim2.new(1, -10, 0, 40)
+        textbox.Position = UDim2.new(0, 5, 0, 0)
+        textbox.PlaceholderText = placeholder
+        textbox.Font = Enum.Font.Gotham
+        textbox.TextSize = 18
+        textbox.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+        textbox.TextColor3 = Color3.fromRGB(255, 255, 255)
+        textbox.Parent = parent
+        textbox.FocusLost:Connect(function(enter)
+            if enter then
+                callback(textbox.Text)
+            end
+        end)
+    end
+
+    function self:Notify(title, msg, duration)
+        local notify = Instance.new("TextLabel")
+        notify.Size = UDim2.new(0, 300, 0, 50)
+        notify.Position = UDim2.new(0.5, -150, 0.2, 0)
+        notify.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        notify.BackgroundTransparency = 0.3
+        notify.TextColor3 = Color3.fromRGB(255, 255, 255)
+        notify.Font = Enum.Font.GothamBold
+        notify.TextSize = 18
+        notify.Text = title .. "\n" .. msg
+        notify.TextWrapped = true
+        notify.Parent = self.MainFrame
+
+        task.delay(duration or 3, function()
+            notify:Destroy()
+        end)
+    end
+
+    return self
+end
+
+return MobileKavoUI
